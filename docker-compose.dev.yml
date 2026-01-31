@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Backend - FastAPI Application
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - SECRET_KEY=dev-secret-key
+      - DATABASE_URL=postgresql://smartcontent:password@postgres:5432/smartcontent_db
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=demo-key
+      - PINECONE_API_KEY=demo-key
+      - PINECONE_ENVIRONMENT=demo
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - smartcontent-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=smartcontent_db
+      - POSTGRES_USER=smartcontent
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smartcontent-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - smartcontent-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  smartcontent-network:
+    driver: bridge

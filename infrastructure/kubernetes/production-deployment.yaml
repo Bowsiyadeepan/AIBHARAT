@@ -1,0 +1,631 @@
+# SmartContent AI - Production Kubernetes Deployment
+# Complete production-ready deployment with all services
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: smartcontent-ai
+  labels:
+    name: smartcontent-ai
+    environment: production
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smartcontent-ai-config
+  namespace: smartcontent-ai
+data:
+  ENVIRONMENT: "production"
+  API_V1_PREFIX: "/api/v1"
+  RATE_LIMIT_REQUESTS: "1000"
+  RATE_LIMIT_WINDOW: "3600"
+  PROMETHEUS_ENABLED: "true"
+  CORS_ORIGINS: "https://app.smartcontent.ai,https://smartcontent.ai"
+  ALLOWED_HOSTS: "api.smartcontent.ai,app.smartcontent.ai"
+
+---
+# Secret for sensitive configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: smartcontent-ai-secrets
+  namespace: smartcontent-ai
+type: Opaque
+data:
+  SECRET_KEY: <base64-encoded-secret-key>
+  DATABASE_URL: <base64-encoded-database-url>
+  REDIS_URL: <base64-encoded-redis-url>
+  OPENAI_API_KEY: <base64-encoded-openai-key>
+  PINECONE_API_KEY: <base64-encoded-pinecone-key>
+  PINECONE_ENVIRONMENT: <base64-encoded-pinecone-env>
+  AWS_ACCESS_KEY_ID: <base64-encoded-aws-key>
+  AWS_SECRET_ACCESS_KEY: <base64-encoded-aws-secret>
+  SENTRY_DSN: <base64-encoded-sentry-dsn>
+
+---
+# ServiceAccount with IAM role for AWS services
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: smartcontent-ai-sa
+  namespace: smartcontent-ai
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/SmartContentAI-ServiceRole
+
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartcontent-ai-backend
+  namespace: smartcontent-ai
+  labels:
+    app: smartcontent-ai-backend
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: smartcontent-ai-backend
+  template:
+    metadata:
+      labels:
+        app: smartcontent-ai-backend
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: smartcontent-ai-sa
+      nodeSelector:
+        workload: api
+      tolerations:
+        - key: workload
+          value: api
+          effect: NoSchedule
+      containers:
+      - name: backend
+        image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/smartcontent-ai/backend:v1.0.0
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: smartcontent-ai-config
+              key: ENVIRONMENT
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: REDIS_URL
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: SECRET_KEY
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: OPENAI_API_KEY
+        - name: PINECONE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: PINECONE_API_KEY
+        - name: PINECONE_ENVIRONMENT
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: PINECONE_ENVIRONMENT
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartcontent-ai-backend-service
+  namespace: smartcontent-ai
+  labels:
+    app: smartcontent-ai-backend
+spec:
+  selector:
+    app: smartcontent-ai-backend
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  type: ClusterIP
+
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartcontent-ai-frontend
+  namespace: smartcontent-ai
+  labels:
+    app: smartcontent-ai-frontend
+    version: v1.0.0
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: smartcontent-ai-frontend
+  template:
+    metadata:
+      labels:
+        app: smartcontent-ai-frontend
+        version: v1.0.0
+    spec:
+      nodeSelector:
+        workload: api
+      tolerations:
+        - key: workload
+          value: api
+          effect: NoSchedule
+      containers:
+      - name: frontend
+        image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/smartcontent-ai/frontend:v1.0.0
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "https://api.smartcontent.ai"
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartcontent-ai-frontend-service
+  namespace: smartcontent-ai
+  labels:
+    app: smartcontent-ai-frontend
+spec:
+  selector:
+    app: smartcontent-ai-frontend
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  type: ClusterIP
+
+---
+# ML Pipeline Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartcontent-ai-ml-pipeline
+  namespace: smartcontent-ai
+  labels:
+    app: smartcontent-ai-ml-pipeline
+    version: v1.0.0
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: smartcontent-ai-ml-pipeline
+  template:
+    metadata:
+      labels:
+        app: smartcontent-ai-ml-pipeline
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: smartcontent-ai-sa
+      nodeSelector:
+        workload: ml
+      tolerations:
+        - key: workload
+          value: ml
+          effect: NoSchedule
+      containers:
+      - name: ml-pipeline
+        image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/smartcontent-ai/ml-pipeline:v1.0.0
+        ports:
+        - containerPort: 8001
+          name: http
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: REDIS_URL
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: OPENAI_API_KEY
+        - name: PINECONE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: smartcontent-ai-secrets
+              key: PINECONE_API_KEY
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: 1
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/models
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: ml-models-pvc
+
+---
+# ML Pipeline Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartcontent-ai-ml-pipeline-service
+  namespace: smartcontent-ai
+  labels:
+    app: smartcontent-ai-ml-pipeline
+spec:
+  selector:
+    app: smartcontent-ai-ml-pipeline
+  ports:
+  - port: 80
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  type: ClusterIP
+
+---
+# Persistent Volume Claim for ML models
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-models-pvc
+  namespace: smartcontent-ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+# Horizontal Pod Autoscaler for Backend
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: smartcontent-ai-backend-hpa
+  namespace: smartcontent-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: smartcontent-ai-backend
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+
+---
+# Horizontal Pod Autoscaler for Frontend
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: smartcontent-ai-frontend-hpa
+  namespace: smartcontent-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: smartcontent-ai-frontend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+---
+# Horizontal Pod Autoscaler for ML Pipeline
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: smartcontent-ai-ml-pipeline-hpa
+  namespace: smartcontent-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: smartcontent-ai-ml-pipeline
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: smartcontent-ai-ingress
+  namespace: smartcontent-ai
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+spec:
+  rules:
+  - host: app.smartcontent.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: smartcontent-ai-frontend-service
+            port:
+              number: 80
+  - host: api.smartcontent.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: smartcontent-ai-backend-service
+            port:
+              number: 80
+  - host: ml.smartcontent.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: smartcontent-ai-ml-pipeline-service
+            port:
+              number: 80
+
+---
+# Network Policy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: smartcontent-ai-network-policy
+  namespace: smartcontent-ai
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 8001
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 8001
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 6379
+    - protocol: UDP
+      port: 53
+
+---
+# Pod Disruption Budget for Backend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: smartcontent-ai-backend-pdb
+  namespace: smartcontent-ai
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: smartcontent-ai-backend
+
+---
+# Pod Disruption Budget for Frontend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: smartcontent-ai-frontend-pdb
+  namespace: smartcontent-ai
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: smartcontent-ai-frontend
+
+---
+# Pod Disruption Budget for ML Pipeline
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: smartcontent-ai-ml-pipeline-pdb
+  namespace: smartcontent-ai
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: smartcontent-ai-ml-pipeline

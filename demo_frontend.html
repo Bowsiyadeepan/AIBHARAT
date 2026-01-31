@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartContent AI - Demo Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: transform 0.2s ease-in-out;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="text-2xl font-bold">🚀 SmartContent AI</div>
+                    <div class="ml-4 text-sm opacity-90">Intelligent Content Platform</div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm">Demo Mode</span>
+                    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome back! 👋</h1>
+            <p class="text-gray-600">Here's what's happening with your content today</p>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        ✨
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Content Generated</p>
+                        <p class="text-2xl font-bold text-gray-900" id="content-generated">Loading...</p>
+                        <p class="text-xs text-green-600">+12% this month</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        📈
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Avg. Engagement</p>
+                        <p class="text-2xl font-bold text-gray-900" id="avg-engagement">Loading...</p>
+                        <p class="text-xs text-green-600">+0.8% last 30 days</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                        ⏰
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Time Saved</p>
+                        <p class="text-2xl font-bold text-gray-900" id="time-saved">Loading...</p>
+                        <p class="text-xs text-green-600">+23h this month</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-orange-100 text-orange-600">
+                        👥
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Total Reach</p>
+                        <p class="text-2xl font-bold text-gray-900" id="total-reach">Loading...</p>
+                        <p class="text-xs text-green-600">+15.3K total</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Content Generation -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6">🎯 Quick Generate</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Content Prompt</label>
+                            <textarea 
+                                id="content-prompt" 
+                                rows="3" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Describe what you want to create... (e.g., 'Write a LinkedIn post about AI productivity tools')"
+                            ></textarea>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Content Type</label>
+                                <select id="content-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="social_post">Social Media Post</option>
+                                    <option value="blog_post">Blog Article</option>
+                                    <option value="email">Email Campaign</option>
+                                    <option value="ad_copy">Ad Copy</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Platform</label>
+                                <select id="platform" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="linkedin">LinkedIn</option>
+                                    <option value="twitter">Twitter</option>
+                                    <option value="facebook">Facebook</option>
+                                    <option value="instagram">Instagram</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button 
+                            id="generate-btn" 
+                            onclick="generateContent()" 
+                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                            ✨ Generate Content
+                        </button>
+                    </div>
+                    
+                    <!-- Generated Content Display -->
+                    <div id="generated-content" class="mt-6 hidden">
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-sm font-medium text-gray-900">Generated Content</h4>
+                                <span class="text-xs text-gray-500">Just now</span>
+                            </div>
+                            <div class="bg-white rounded-md p-3 border border-gray-200 mb-4">
+                                <p id="generated-text" class="text-gray-900 whitespace-pre-wrap"></p>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <button class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors text-sm">
+                                    ✅ Use This Content
+                                </button>
+                                <button onclick="generateContent()" class="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors text-sm">
+                                    🔄 Regenerate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Chart -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6">📊 Performance Overview</h2>
+                    <canvas id="performanceChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-8">
+                <!-- AI Insights -->
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
+                    <div class="flex items-center mb-4">
+                        <span class="text-2xl mr-2">🧠</span>
+                        <h3 class="text-lg font-semibold text-gray-900">AI Insights</h3>
+                    </div>
+                    
+                    <div id="ai-insights" class="space-y-4">
+                        <div class="bg-white rounded-lg p-4 border border-blue-100">
+                            <p class="text-sm text-gray-700 mb-2">Loading insights...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">⚡ Quick Actions</h3>
+                    
+                    <div class="space-y-3">
+                        <button class="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <div class="font-medium text-gray-900">📱 Social Media Post</div>
+                            <div class="text-sm text-gray-600">Quick social content</div>
+                        </button>
+                        
+                        <button class="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <div class="font-medium text-gray-900">📝 Blog Article</div>
+                            <div class="text-sm text-gray-600">Long-form content</div>
+                        </button>
+                        
+                        <button class="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <div class="font-medium text-gray-900">📧 Email Campaign</div>
+                            <div class="text-sm text-gray-600">Marketing emails</div>
+                        </button>
+                        
+                        <button class="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <div class="font-medium text-gray-900">📈 View Analytics</div>
+                            <div class="text-sm text-gray-600">Performance insights</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-gray-400">SmartContent AI Platform - Demo Version</p>
+            <p class="text-sm text-gray-500 mt-2">🚀 Revolutionizing content creation with AI</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/dashboard`);
+                const data = await response.json();
+                
+                document.getElementById('content-generated').textContent = data.overview.content_generated.toLocaleString();
+                document.getElementById('avg-engagement').textContent = (data.overview.avg_engagement_rate * 100).toFixed(1) + '%';
+                document.getElementById('time-saved').textContent = data.overview.time_saved_hours + 'h';
+                document.getElementById('total-reach').textContent = (data.overview.total_reach / 1000).toFixed(1) + 'K';
+                
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        // Load AI insights
+        async function loadInsights() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/recommendations`);
+                const data = await response.json();
+                
+                const insightsContainer = document.getElementById('ai-insights');
+                insightsContainer.innerHTML = '';
+                
+                data.recommendations.forEach(rec => {
+                    const insight = document.createElement('div');
+                    insight.className = 'bg-white rounded-lg p-4 border border-blue-100';
+                    insight.innerHTML = `
+                        <p class="text-sm text-gray-700 mb-2">
+                            <strong>${rec.title}:</strong> ${rec.description}
+                        </p>
+                        <button class="text-blue-600 text-xs font-medium hover:text-blue-700">
+                            Take action →
+                        </button>
+                    `;
+                    insightsContainer.appendChild(insight);
+                });
+                
+            } catch (error) {
+                console.error('Failed to load insights:', error);
+            }
+        }
+
+        // Generate content
+        async function generateContent() {
+            const prompt = document.getElementById('content-prompt').value;
+            const contentType = document.getElementById('content-type').value;
+            const platform = document.getElementById('platform').value;
+            const generateBtn = document.getElementById('generate-btn');
+            
+            if (!prompt.trim()) {
+                alert('Please enter a content prompt');
+                return;
+            }
+            
+            generateBtn.textContent = '⏳ Generating...';
+            generateBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/content/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        content_type: contentType,
+                        platform: platform
+                    })
+                });
+                
+                const data = await response.json();
+                
+                document.getElementById('generated-text').textContent = data.generated_text;
+                document.getElementById('generated-content').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Content generation failed:', error);
+                alert('Content generation failed. Please try again.');
+            } finally {
+                generateBtn.textContent = '✨ Generate Content';
+                generateBtn.disabled = false;
+            }
+        }
+
+        // Load performance chart
+        async function loadPerformanceChart() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/analytics/performance`);
+                const data = await response.json();
+                
+                const ctx = document.getElementById('performanceChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.time_series.slice(-7).map(d => new Date(d.date).toLocaleDateString()),
+                        datasets: [{
+                            label: 'Engagement Rate',
+                            data: data.time_series.slice(-7).map(d => d.engagement_rate * 100),
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Failed to load performance chart:', error);
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboard();
+            loadInsights();
+            loadPerformanceChart();
+        });
+    </script>
+</body>
+</html>
